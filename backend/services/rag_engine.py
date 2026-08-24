@@ -45,7 +45,9 @@ def query_pdf_with_gemini(query: str, page_number: int) -> str:
     response = client.models.generate_content(
         model="gemini-3.6-flash", 
         contents=[img, query],
-        config=types.GenerateContentConfig(tools=[]) 
+        config=types.GenerateContentConfig(tools=[]),
+        temperature=0.0
+        max_output_tokens=50
     )
     return response.text
 
@@ -56,10 +58,12 @@ agent_chat = client.chats.create(
             "You are an intelligent multimodal RAG assistant. "
             "When the user provides a question or instruction about the document, you MUST use the available tools "
             "(list_available_pages and query_pdf_with_gemini) to search the document pages and find the answer. "
+            "CRITICAL CONSTRAINTS: Be direct and concise. Do not perform redundant tool loops or secondary searches. "
             "If the user asks a question whose answer is not present in the provided document, explicitly state: "
             "'I couldn't find information about that in the provided document,' and do not generate external or general knowledge."
         ),
         tools=[query_pdf_with_gemini, list_available_pages], 
-        temperature=0.0
+        temperature=0.0,
+        max_output_tokens=150  # <--- HARD STOP for the overall agent response so it can't run wild
     )
 )
