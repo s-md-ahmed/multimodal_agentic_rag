@@ -3,15 +3,7 @@ import tempfile
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-
-# Safe Pillow import that won't crash if the environment casing acts up
-try:
-    from PIL import Image
-except ImportError:
-    try:
-        from pillow import Image
-    except ImportError:
-        Image = None
+from PIL import Image
 
 load_dotenv()
 client = genai.Client()
@@ -49,9 +41,6 @@ def query_pdf_with_gemini(query: str, page_number: int) -> str:
         query: The specific question to ask about the content on that page.
         page_number: The exact integer page index (e.g., 0, 1, 2) corresponding to the page image file.
     """
-    if Image is None:
-        return "Error: Pillow library is not loaded properly."
-
     folder_path = get_temp_dir()
     print(f"\n[AGENT CHOSE PAGE {page_number}] -> Running query: '{query}'\n")
     
