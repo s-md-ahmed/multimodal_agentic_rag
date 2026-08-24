@@ -72,7 +72,7 @@ async def chat_with_pdf(prompt: str = Form(None), file: UploadFile = File(None))
         raise HTTPException(status_code=500, detail=str(e))
 
 # Mount your frontend directory to serve HTML, CSS, and JS at the root URL
-app.mount("/", StaticFiles(directory="../frontend", html=True), name="frontend")
+app.mount("/", StaticFiles(directory="/frontend", html=True), name="frontend")
 
 if __name__ == "__main__":
     import uvicorn
