@@ -1,13 +1,18 @@
 import os
 import tempfile
-from PIL import Image
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+
+# Safe Pillow import that won't crash if the environment casing acts up
 try:
     from PIL import Image
 except ImportError:
-    from pillow import Image
+    try:
+        from pillow import Image
+    except ImportError:
+        Image = None
+
 load_dotenv()
 client = genai.Client()
 
@@ -44,6 +49,9 @@ def query_pdf_with_gemini(query: str, page_number: int) -> str:
         query: The specific question to ask about the content on that page.
         page_number: The exact integer page index (e.g., 0, 1, 2) corresponding to the page image file.
     """
+    if Image is None:
+        return "Error: Pillow library is not loaded properly."
+
     folder_path = get_temp_dir()
     print(f"\n[AGENT CHOSE PAGE {page_number}] -> Running query: '{query}'\n")
     
@@ -57,14 +65,14 @@ def query_pdf_with_gemini(query: str, page_number: int) -> str:
     img = Image.open(image_path)
     
     response = client.models.generate_content(
-        model="gemini-3.6-flash", 
+        model="gemini-2.5-flash", 
         contents=[img, query],
         config=types.GenerateContentConfig(tools=[]) 
     )
     return response.text
 
 agent_chat = client.chats.create(
-    model="gemini-3.6-flash",
+    model="gemini-2.5-flash",
     config=types.GenerateContentConfig(
         system_instruction = (
             "You are an intelligent multimodal RAG assistant. "
