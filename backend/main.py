@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from services.rag_engine import agent_chat, set_active_session_dir
 from services.parser import parse_pdf
 import os
@@ -33,12 +34,10 @@ async def chat_with_pdf(prompt: str = Form(None), file: UploadFile = File(None))
 
             pdf_path = os.path.join(temp_dir, file.filename)
             
-            # Stream/write the file safely in chunks to prevent memory locking/hanging
             contents = await file.read()
             with open(pdf_path, "wb") as f:
                 f.write(contents)
             
-            # Parse the PDF into images
             parse_pdf(pdf_path, temp_dir)
             return {"response": "PDF uploaded and parsed successfully."}
 
@@ -72,8 +71,10 @@ async def chat_with_pdf(prompt: str = Form(None), file: UploadFile = File(None))
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+# Mount your frontend directory to serve HTML, CSS, and JS at the root URL
+app.mount("/", StaticFiles(directory="../frontend", html=True), name="frontend")
+
 if __name__ == "__main__":
     import uvicorn
-    # Automatically picks up Render's PORT environment variable, defaults to 8000 locally
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("main:app", host="0.0.0.0", port=port)
