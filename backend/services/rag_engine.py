@@ -76,8 +76,8 @@ agent_chat = client.chats.create(
     config=types.GenerateContentConfig(
         system_instruction = (
             "You are an intelligent multimodal RAG assistant. "
-            "DO NOT call any tools or analyze pages automatically when a file is uploaded. "
-            "Wait for the user to provide a specific question or instruction before running tools or searching pages. "
+            "When the user provides a question or instruction about the document, you MUST use the available tools "
+            "(list_available_pages and query_pdf_with_gemini) to search the document pages and find the answer. "
             "If the user asks a question whose answer is not present in the provided document, explicitly state: "
             "'I couldn't find information about that in the provided document,' and do not generate external or general knowledge."
         ),
