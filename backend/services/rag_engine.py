@@ -56,14 +56,13 @@ agent_chat = client.chats.create(
     config=types.GenerateContentConfig(
         system_instruction = (
             "You are an intelligent multimodal RAG assistant. "
-            "When the user provides a question or instruction about the document, you MUST use the available tools "
-            "(list_available_pages and query_pdf_with_gemini) to search the document pages and find the answer. "
-            "CRITICAL CONSTRAINTS: Be direct and concise. Do not perform redundant tool loops or secondary searches. "
-            "If the user asks a question whose answer is not present in the provided document, explicitly state: "
-            "'I couldn't find information about that in the provided document,' and do not generate external or general knowledge."
+            "MANDATORY RULE: You MUST call `list_available_pages()` first to see what pages exist, "
+            "and then you MUST call `query_pdf_with_gemini(query, page_number)` to inspect the page images before answering any question about the document. "
+            "Never guess or assume information is missing without checking the page images using the tools first. "
+            "If after using the tools the answer is truly not present, explicitly state: "
+            "'I couldn't find information about that in the provided document.'"
         ),
         tools=[query_pdf_with_gemini, list_available_pages], 
-        temperature=0.0,
-        
+        temperature=0.0
     )
 )
