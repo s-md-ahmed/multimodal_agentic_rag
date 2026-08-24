@@ -65,14 +65,14 @@ def query_pdf_with_gemini(query: str, page_number: int) -> str:
     img = Image.open(image_path)
     
     response = client.models.generate_content(
-        model="gemini-2.5-flash", 
+        model="gemini-3.6-flash", 
         contents=[img, query],
         config=types.GenerateContentConfig(tools=[]) 
     )
     return response.text
 
 agent_chat = client.chats.create(
-    model="gemini-2.5-flash",
+    model="gemini-3.6-flash",
     config=types.GenerateContentConfig(
         system_instruction = (
             "You are an intelligent multimodal RAG assistant. "
