@@ -71,8 +71,8 @@ async def chat_with_pdf(prompt: str = Form(None), file: UploadFile = File(None))
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-# Mount your frontend directory to serve HTML, CSS, and JS at the root URL
-app.mount("/", StaticFiles(directory="/frontend", html=True), name="frontend")
+# Mount your frontend directory safely using the absolute path inside the Docker container
+app.mount("/", StaticFiles(directory="/app/frontend", html=True), name="frontend")
 
 if __name__ == "__main__":
     import uvicorn
