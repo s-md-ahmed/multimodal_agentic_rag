@@ -51,19 +51,15 @@ def query_pdf_with_gemini(query: str, page_number: int) -> str:
         )
     )
     return response.text
-
 agent_chat = client.chats.create(
     model="gemini-3.6-flash",
     config=types.GenerateContentConfig(
         system_instruction = (
-            "You are an intelligent multimodal RAG assistant. "
-            "MANDATORY RULE: You MUST call `list_available_pages()` first to see what pages exist, "
-            "and then you MUST call `query_pdf_with_gemini(query, page_number)` to inspect the page images before answering any question about the document. "
-            "Never guess or assume information is missing without checking the page images using the tools first. "
-            "If after using the tools the answer is truly not present, explicitly state: "
-            "'I couldn't find information about that in the provided document.'"
+            "You are a precise data-extraction tool. "
+            "When the user asks about the document, you MUST immediately call `query_pdf_with_gemini(query, page_number)` "
+            "without calling any other tools. Do not loop. Answer the question directly and stop."
         ),
-        tools=[query_pdf_with_gemini, list_available_pages], 
+        tools=[query_pdf_with_gemini], # <--- Removed list_available_pages to stop redundant loops!
         temperature=0.0
     )
 )
