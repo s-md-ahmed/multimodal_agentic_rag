@@ -1,0 +1,166 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #0f172a;
+    color: #f8fafc;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 1rem;
+}
+
+.panel {
+    background-color: #1e293b;
+    border-radius: 12px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 600px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+}
+
+#upload-card {
+    text-align: center;
+}
+
+#upload-card h1 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: #ffffff;
+}
+
+#upload-card p {
+    color: #94a3b8;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+}
+
+.upload-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+input[type="file"] {
+    background: #0f172a;
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px dashed #475569;
+    color: #cbd5e1;
+    cursor: pointer;
+}
+
+button {
+    background-color: #0284c7;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #0369a1;
+}
+
+/* Chat Workspace Styling */
+#chat-workspace {
+    height: 80vh;
+    max-width: 750px;
+    padding: 0;
+    overflow: hidden;
+}
+
+.chat-header {
+    background-color: #0f172a;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom: 1px solid #334155;
+}
+
+.chat-header h2 {
+    font-size: 1.1rem;
+    color: #f8fafc;
+}
+
+.status-indicator {
+    color: #22c55e;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 1.5rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    background-color: #1e293b;
+}
+
+.message {
+    max-width: 75%;
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.user-message {
+    background-color: #0284c7;
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 2px;
+}
+
+.agent-message {
+    background-color: #334155;
+    color: #f1f5f9;
+    align-self: flex-start;
+    border-bottom-left-radius: 2px;
+}
+
+.chat-input-area {
+    display: flex;
+    padding: 1rem;
+    background-color: #0f172a;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    border-top: 1px solid #334155;
+    gap: 0.75s;
+}
+
+.chat-input-area input[type="text"] {
+    flex: 1;
+    background-color: #1e293b;
+    border: 1px solid #475569;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: white;
+    font-size: 0.95rem;
+    outline: none;
+}
+
+.chat-input-area input[type="text"]:focus {
+    border-color: #0284c7;
+}
+
+.chat-input-area button {
+    padding: 0.75rem 1.25rem;
+}
