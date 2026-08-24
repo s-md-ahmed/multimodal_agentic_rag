@@ -4,7 +4,10 @@ from PIL import Image
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-
+try:
+    from PIL import Image
+except ImportError:
+    from pillow import Image
 load_dotenv()
 client = genai.Client()
 
