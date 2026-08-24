@@ -46,7 +46,7 @@ def query_pdf_with_gemini(query: str, page_number: int) -> str:
         model="gemini-3.6-flash", 
         contents=[img, query],
         config=types.GenerateContentConfig(tools=[]),
-        temperature=0.0
+        temperature=0.0,
         max_output_tokens=50
     )
     return response.text
