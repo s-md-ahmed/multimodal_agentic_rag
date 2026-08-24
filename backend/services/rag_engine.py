@@ -47,7 +47,7 @@ def query_pdf_with_gemini(query: str, page_number: int) -> str:
         contents=[img, query],
         config=types.GenerateContentConfig(tools=[]),
         temperature=0.0,
-        max_output_tokens=50
+        
     )
     return response.text
 
@@ -64,6 +64,6 @@ agent_chat = client.chats.create(
         ),
         tools=[query_pdf_with_gemini, list_available_pages], 
         temperature=0.0,
-        max_output_tokens=150  # <--- HARD STOP for the overall agent response so it can't run wild
+        
     )
 )
