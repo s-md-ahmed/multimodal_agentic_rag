@@ -9,6 +9,6 @@ langchain-google-genai==4.3.2
 langgraph==1.2.10
 chromadb==1.5.9
 pymupdf==1.28.2
-pillow==12.3.0
+Pillow==12.3.0
 pydantic==2.13.4
 python-dotenv==1.2.2
