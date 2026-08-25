@@ -55,12 +55,12 @@ def query_pdf_with_gemini(query: str, page_number: int) -> str:
 agent_chat = client.chats.create(
     model="gemini-3.6-flash",
     config=types.GenerateContentConfig(
-        system_instruction = (
+        system_instruction=(
             "You are a precise data-extraction tool. "
             "1. First, call `list_available_pages()` to see what pages exist. "
             "2. Then, choose the correct page number and call `query_pdf_with_gemini(query, page_number)` exactly once. "
-            "Do not loop. Answer the question directly and stop.
-            If the question cannot be answered using the provided document or pages, explicitly state that you don't know based on the document."
+            "Do not loop. Answer the question directly and stop. "
+            "If the question cannot be answered using the provided document or pages, explicitly state that you don't know based on the document."
         ),
         tools=[list_available_pages, query_pdf_with_gemini], 
         temperature=0.0
