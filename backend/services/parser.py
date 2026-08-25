@@ -1,5 +1,6 @@
 import fitz
 import os
+from rag_engine import set_active_session_dir
 
 def parse_pdf(pdf_path: str, output_dir: str = None):
     if output_dir is None:
@@ -7,6 +8,10 @@ def parse_pdf(pdf_path: str, output_dir: str = None):
         output_dir = os.path.join(base_dir, "data", "temp")
         
     os.makedirs(output_dir, exist_ok=True)
+    
+    # Sync this path with the rag engine session directory!
+    set_active_session_dir(output_dir)
+    
     doc = fitz.open(pdf_path)
     for page in doc:
         pix = page.get_pixmap()
