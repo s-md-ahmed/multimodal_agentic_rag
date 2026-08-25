@@ -1,6 +1,6 @@
 import fitz
 import os
-from rag_engine import set_active_session_dir
+from .rag_engine import set_active_session_dir
 
 def parse_pdf(pdf_path: str, output_dir: str = None):
     if output_dir is None:
