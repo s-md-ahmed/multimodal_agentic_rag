@@ -6,8 +6,38 @@ document.addEventListener("DOMContentLoaded", () => {
     const sendButton = document.getElementById("send-button");
     const userInput = document.getElementById("user-input");
     const chatMessages = document.getElementById("chat-messages");
+    
+    // API Key Elements
+    const apiKeyInput = document.getElementById("api-key-input");
+    const saveKeyButton = document.getElementById("save-key-button");
 
     let selectedFile = null;
+
+    // Load saved API key if present
+    const savedKey = localStorage.getItem("gemini_api_key");
+    if (savedKey) {
+        apiKeyInput.value = savedKey;
+    }
+
+    saveKeyButton.addEventListener("click", () => {
+        const key = apiKeyInput.value.trim();
+        if (key) {
+            localStorage.setItem("gemini_api_key", key);
+            alert("API Key saved securely in your browser session!");
+        } else {
+            localStorage.removeItem("gemini_api_key");
+            alert("API Key cleared.");
+        }
+    });
+
+    function getApiKeyHeaders() {
+        const key = localStorage.getItem("gemini_api_key") || apiKeyInput.value.trim();
+        const headers = {};
+        if (key) {
+            headers["X-Gemini-API-Key"] = key;
+        }
+        return headers;
+    }
     
     fileInput.addEventListener("change", (event) => {
         if (event.target.files.length > 0) {
@@ -19,6 +49,12 @@ document.addEventListener("DOMContentLoaded", () => {
     uploadButton.addEventListener("click", async (event) => {
         event.preventDefault();
         event.stopPropagation();
+
+        const apiKey = localStorage.getItem("gemini_api_key") || apiKeyInput.value.trim();
+        if (!apiKey) {
+            alert("Please enter and save your Gemini API Key in the top right corner first!");
+            return;
+        }
 
         if (!selectedFile) {
             alert("Please choose a PDF file first!");
@@ -34,9 +70,9 @@ document.addEventListener("DOMContentLoaded", () => {
         
         try {
             console.log("Sending fetch request to backend...");
-            // FIXED: Using relative path instead of hardcoded localhost
             const response = await fetch("/chat-with-pdf", {
                 method: "POST",
+                headers: getApiKeyHeaders(),
                 body: formData
             });
 
@@ -77,6 +113,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const text = userInput.value.trim();
         if (!text) return;
 
+        const apiKey = localStorage.getItem("gemini_api_key") || apiKeyInput.value.trim();
+        if (!apiKey) {
+            alert("API Key missing! Please enter your Gemini API Key at the top right.");
+            return;
+        }
+
         appendMessage(text, "user-message");
         userInput.value = "";
 
@@ -86,9 +128,9 @@ document.addEventListener("DOMContentLoaded", () => {
             const formData = new FormData();
             formData.append("prompt", text);
 
-            // FIXED: Using relative path here too
             const response = await fetch("/chat-with-pdf", {
                 method: "POST",
+                headers: getApiKeyHeaders(),
                 body: formData
             });
 
@@ -102,7 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (err) {
             console.error("Chat error:", err);
             thinkingId.remove();
-            appendMessage("The resource limit is exhausted.", "agent-message");
+            appendMessage("The resource limit is exhausted or invalid API key provided.", "agent-message");
         }
     }
 
