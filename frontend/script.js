@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const sendButton = document.getElementById("send-button");
     const userInput = document.getElementById("user-input");
     const chatMessages = document.getElementById("chat-messages");
+    const backButton = document.getElementById("back-to-upload-btn");
     
     // API Key Elements
     const apiKeyContainer = document.getElementById("api-key-container");
@@ -38,7 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (key) {
             localStorage.setItem("gemini_api_key", key);
             if (apiKeyContainer) {
-                apiKeyContainer.style.display = "none"; // Hide box immediately on save!
+                apiKeyContainer.style.display = "none";
             }
             alert("API Key saved securely in your browser session!");
         } else {
@@ -46,6 +47,20 @@ document.addEventListener("DOMContentLoaded", () => {
             alert("API Key cleared.");
         }
     });
+
+    // Back to upload button logic
+    if (backButton) {
+        backButton.addEventListener("click", () => {
+            sessionStorage.removeItem("rag_active_session");
+            chatWorkspace.style.display = "none";
+            uploadCard.style.display = "flex";
+            chatMessages.innerHTML = "";
+            selectedFile = null;
+            fileInput.value = "";
+            uploadButton.disabled = false;
+            uploadButton.textContent = "Upload & Start Chat";
+        });
+    }
 
     function getApiKeyHeaders() {
         const key = localStorage.getItem("gemini_api_key") || apiKeyInput.value.trim();
