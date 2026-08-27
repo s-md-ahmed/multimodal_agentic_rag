@@ -19,6 +19,16 @@ document.addEventListener("DOMContentLoaded", () => {
         apiKeyInput.value = savedKey;
     }
 
+    // Check if we have an active chat session saved in browser session storage
+    const activeSession = sessionStorage.getItem("rag_active_session");
+    if (activeSession) {
+        uploadCard.style.display = "none";
+        chatWorkspace.style.display = "flex";
+    } else {
+        uploadCard.style.display = "flex";
+        chatWorkspace.style.display = "none";
+    }
+
     saveKeyButton.addEventListener("click", () => {
         const key = apiKeyInput.value.trim();
         if (key) {
@@ -85,6 +95,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const data = await response.json();
             console.log("Success data:", data);
+
+            // Save session state so refresh keeps them in the chat view
+            sessionStorage.setItem("rag_active_session", "true");
 
             uploadCard.style.display = "none";
             chatWorkspace.style.display = "flex";
