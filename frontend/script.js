@@ -9,19 +9,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const backButton = document.getElementById("back-to-upload-btn");
     
     // API Key Elements
-    const apiKeyContainer = document.getElementById("api-key-container");
     const apiKeyInput = document.getElementById("api-key-input");
-    const saveKeyButton = document.getElementById("save-key-button");
 
     let selectedFile = null;
 
-    // Load saved API key if present and hide container
+    // Load saved API key if present
     const savedKey = localStorage.getItem("gemini_api_key");
     if (savedKey) {
         apiKeyInput.value = savedKey;
-        if (apiKeyContainer) {
-            apiKeyContainer.style.display = "none";
-        }
     }
 
     // Check if we have an active chat session saved in browser session storage
@@ -33,20 +28,6 @@ document.addEventListener("DOMContentLoaded", () => {
         uploadCard.style.display = "flex";
         chatWorkspace.style.display = "none";
     }
-
-    saveKeyButton.addEventListener("click", () => {
-        const key = apiKeyInput.value.trim();
-        if (key) {
-            localStorage.setItem("gemini_api_key", key);
-            if (apiKeyContainer) {
-                apiKeyContainer.style.display = "none";
-            }
-            alert("API Key saved securely in your browser session!");
-        } else {
-            localStorage.removeItem("gemini_api_key");
-            alert("API Key cleared.");
-        }
-    });
 
     // Back to upload button logic
     if (backButton) {
@@ -63,7 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function getApiKeyHeaders() {
-        const key = localStorage.getItem("gemini_api_key") || apiKeyInput.value.trim();
+        const key = apiKeyInput.value.trim();
         const headers = {};
         if (key) {
             headers["X-Gemini-API-Key"] = key;
@@ -82,11 +63,14 @@ document.addEventListener("DOMContentLoaded", () => {
         event.preventDefault();
         event.stopPropagation();
 
-        const apiKey = localStorage.getItem("gemini_api_key") || apiKeyInput.value.trim();
+        const apiKey = apiKeyInput.value.trim();
         if (!apiKey) {
-            alert("Please enter and save your Gemini API Key in the top right corner first!");
+            alert("Please enter your Gemini API Key first!");
             return;
         }
+
+        // Save key automatically on upload click
+        localStorage.setItem("gemini_api_key", apiKey);
 
         if (!selectedFile) {
             alert("Please choose a PDF file first!");
@@ -148,9 +132,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const text = userInput.value.trim();
         if (!text) return;
 
-        const apiKey = localStorage.getItem("gemini_api_key") || apiKeyInput.value.trim();
+        const apiKey = apiKeyInput.value.trim();
         if (!apiKey) {
-            alert("API Key missing! Please enter your Gemini API Key at the top right.");
+            alert("API Key missing! Please enter your Gemini API Key.");
             return;
         }
 
