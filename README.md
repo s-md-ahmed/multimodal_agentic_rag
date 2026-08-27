@@ -21,6 +21,8 @@ Tech Stack
 •	Infrastructure: Docker (python:3.12-slim), Render
 
 **Project Structure**
+
+```text
 ├── backend/
 │   ├── main.py             # FastAPI entrypoint, routing, session mgmt & dynamic agent creation
 │   └── services/
@@ -32,4 +34,3 @@ Tech Stack
 │   └── script.js           # Client-side state handling, file uploads, and chat loop
 ├── requirements.txt        # Python package dependencies
 └── Dockerfile              # Container configuration file
-
