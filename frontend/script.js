@@ -18,7 +18,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const savedKey = localStorage.getItem("gemini_api_key");
     if (savedKey) {
         apiKeyInput.value = savedKey;
-        apiKeyContainer.style.display = "none"; // Hide if key already exists
+        if (apiKeyContainer) {
+            apiKeyContainer.style.display = "none";
+        }
     }
 
     // Check if we have an active chat session saved in browser session storage
@@ -35,7 +37,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const key = apiKeyInput.value.trim();
         if (key) {
             localStorage.setItem("gemini_api_key", key);
-            apiKeyContainer.style.display = "none"; // Hide box immediately on save!
+            if (apiKeyContainer) {
+                apiKeyContainer.style.display = "none"; // Hide box immediately on save!
+            }
             alert("API Key saved securely in your browser session!");
         } else {
             localStorage.removeItem("gemini_api_key");
