@@ -1,39 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multimodal RAG Assistant</title>
-    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multimodal RAG Assistant</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- View 1: Upload Card with API Key input integrated -->
-    <div id="upload-card" class="panel">
-        <h1>Upload PDF Document</h1>
-        <p>Enter your Gemini API Key and select your PDF file to begin.</p>
-        
-        <div class="upload-form" style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 400px; margin: 0 auto;">
-            <input type="password" id="api-key-input" placeholder="Enter Gemini API Key..." style="padding: 10px; border-radius: 6px; border: 1px solid #444; background: #111; color: #fff; font-size: 14px;">
-            <input type="file" id="pdf-file-input" accept=".pdf" style="padding: 6px 0;"> 
-            <button id="start-button" type="button" style="padding: 10px; background: #0066cc; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold;">Upload & Start Chat</button>
-        </div>
-    </div>
+    <!-- Persistent API Key Bar (Always visible at top right) -->
+    <div id="api-key-container" style="position: fixed; top: 15px; right: 20px; z-index: 1000; display: flex; gap: 8px; align-items: center; background: rgba(20,20,20,0.85); padding: 8px 12px; border-radius: 8px; border: 1px solid #444;">
+        <input type="password" id="api-key-input" placeholder="Enter Gemini API Key..." style="padding: 6px 10px; border-radius: 4px; border: 1px solid #555; background: #111; color: #fff; font-size: 12px; width: 180px;">
+    </div>
 
-    <!-- View 2: Separate Chat Workspace -->
-    <div id="chat-workspace" class="panel" style="display: none;">
-        <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center;">
-            <button id="back-to-upload-btn" type="button" style="padding: 4px 10px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-size: 12px;">← Back</button>
-            <h2>PDF RAG Assistant</h2>
-            <span class="status-indicator">● Active</span>
-        </div>
-        <div id="chat-messages" class="chat-messages"></div>
-        <div class="chat-input-area">
-            <input type="text" id="user-input" placeholder="Ask a question about your PDF...">
-            <button id="send-button" type="button">Send</button>
-        </div>
-    </div>
+    <!-- View 1: Upload Card -->
+    <div id="upload-card" class="panel">
+        <h1>Upload PDF Document</h1>
+        <p>Select your PDF file to begin multimodal RAG analysis.</p>
+        <div class="upload-form">
+            <input type="file" id="pdf-file-input" accept=".pdf"> 
+            <button id="start-button" type="button">Upload & Start Chat</button>
+        </div>
+    </div>
 
-    <script src="script.js"></script>
+    <!-- View 2: Separate Chat Workspace -->
+    <div id="chat-workspace" class="panel" style="display: none;">
+        <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <button id="back-to-upload-btn" type="button" style="padding: 4px 10px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-size: 12px;">← Back</button>
+            <h2>PDF RAG Assistant</h2>
+            <span class="status-indicator">● Active</span>
+        </div>
+        <div id="chat-messages" class="chat-messages"></div>
+        <div class="chat-input-area">
+            <input type="text" id="user-input" placeholder="Ask a question about your PDF...">
+            <button id="send-button" type="button">Send</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
