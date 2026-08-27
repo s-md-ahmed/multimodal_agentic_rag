@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const chatMessages = document.getElementById("chat-messages");
     const backButton = document.getElementById("back-to-upload-btn");
     
-    // API Key Elements
+    // API Key Element
     const apiKeyInput = document.getElementById("api-key-input");
 
     let selectedFile = null;
@@ -18,6 +18,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (savedKey) {
         apiKeyInput.value = savedKey;
     }
+
+    // Save key automatically as user types it
+    apiKeyInput.addEventListener("input", () => {
+        const key = apiKeyInput.value.trim();
+        if (key) {
+            localStorage.setItem("gemini_api_key", key);
+        } else {
+            localStorage.removeItem("gemini_api_key");
+        }
+    });
 
     // Check if we have an active chat session saved in browser session storage
     const activeSession = sessionStorage.getItem("rag_active_session");
@@ -44,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function getApiKeyHeaders() {
-        const key = apiKeyInput.value.trim();
+        const key = localStorage.getItem("gemini_api_key") || apiKeyInput.value.trim();
         const headers = {};
         if (key) {
             headers["X-Gemini-API-Key"] = key;
@@ -63,14 +73,11 @@ document.addEventListener("DOMContentLoaded", () => {
         event.preventDefault();
         event.stopPropagation();
 
-        const apiKey = apiKeyInput.value.trim();
+        const apiKey = localStorage.getItem("gemini_api_key") || apiKeyInput.value.trim();
         if (!apiKey) {
-            alert("Please enter your Gemini API Key first!");
+            alert("Please enter your Gemini API Key in the top right corner first!");
             return;
         }
-
-        // Save key automatically on upload click
-        localStorage.setItem("gemini_api_key", apiKey);
 
         if (!selectedFile) {
             alert("Please choose a PDF file first!");
@@ -132,9 +139,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const text = userInput.value.trim();
         if (!text) return;
 
-        const apiKey = apiKeyInput.value.trim();
+        const apiKey = localStorage.getItem("gemini_api_key") || apiKeyInput.value.trim();
         if (!apiKey) {
-            alert("API Key missing! Please enter your Gemini API Key.");
+            alert("API Key missing! Please enter your Gemini API Key at the top right.");
             return;
         }
 
