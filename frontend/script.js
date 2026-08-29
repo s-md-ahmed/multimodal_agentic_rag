@@ -29,12 +29,15 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Check if we have an active chat session saved in browser session storage
+    // Check if we have an active chat session AND a valid API key saved in browser session storage
     const activeSession = sessionStorage.getItem("rag_active_session");
-    if (activeSession) {
+    const currentKey = localStorage.getItem("gemini_api_key");
+    
+    if (activeSession && currentKey) {
         uploadCard.style.display = "none";
         chatWorkspace.style.display = "flex";
     } else {
+        sessionStorage.removeItem("rag_active_session");
         uploadCard.style.display = "flex";
         chatWorkspace.style.display = "none";
     }
@@ -75,7 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const apiKey = localStorage.getItem("gemini_api_key") || apiKeyInput.value.trim();
         if (!apiKey) {
-            alert("Please enter your Gemini API Key in the top right corner first!");
+            alert("Please enter your Gemini API Key first!");
             return;
         }
 
@@ -84,6 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
+    // Both API key and document must be present to proceed
         uploadButton.disabled = true;
         uploadButton.textContent = "Uploading...";
 
@@ -139,9 +143,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const text = userInput.value.trim();
         if (!text) return;
 
-        const apiKey = localStorage.getItem("gemini_api_key") || apiKeyInput.value.trim();
+        const apiKey = localStorage.getItem("gemini_api_key");
         if (!apiKey) {
-            alert("API Key missing! Please enter your Gemini API Key at the top right.");
+            alert("API Key missing! Returning to upload view.");
+            sessionStorage.removeItem("rag_active_session");
+            chatWorkspace.style.display = "none";
+            uploadCard.style.display = "flex";
             return;
         }
 
