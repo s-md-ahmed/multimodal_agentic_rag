@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const chatMessages = document.getElementById("chat-messages");
     const backButton = document.getElementById("back-to-upload-btn");
     
-    // API Key Element
+    // API Key Element inside Upload Card
     const apiKeyInput = document.getElementById("api-key-input");
 
     let selectedFile = null;
@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Check if we have an active chat session AND a valid API key saved in browser session storage
+    // Check session state
     const activeSession = sessionStorage.getItem("rag_active_session");
     const currentKey = localStorage.getItem("gemini_api_key");
     
@@ -68,7 +68,6 @@ document.addEventListener("DOMContentLoaded", () => {
     fileInput.addEventListener("change", (event) => {
         if (event.target.files.length > 0) {
             selectedFile = event.target.files[0];
-            console.log("File selected:", selectedFile.name);
         }
     });
 
@@ -78,16 +77,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const apiKey = localStorage.getItem("gemini_api_key") || apiKeyInput.value.trim();
         if (!apiKey) {
-            alert("Please enter your Gemini API Key first!");
+            alert("Please enter your Gemini API Key!");
             return;
         }
 
         if (!selectedFile) {
-            alert("Please choose a PDF file first!");
+            alert("Please choose a PDF file!");
             return;
         }
 
-    // Both API key and document must be present to proceed
         uploadButton.disabled = true;
         uploadButton.textContent = "Uploading...";
 
@@ -96,24 +94,19 @@ document.addEventListener("DOMContentLoaded", () => {
         formData.append("file", selectedFile);
         
         try {
-            console.log("Sending fetch request to backend...");
             const response = await fetch("/chat-with-pdf", {
                 method: "POST",
                 headers: getApiKeyHeaders(),
                 body: formData
             });
 
-            console.log("Response status:", response.status);
-            
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`Server returned status ${response.status}: ${errorText}`);
             }
 
             const data = await response.json();
-            console.log("Success data:", data);
 
-            // Save session state so refresh keeps them in the chat view
             sessionStorage.setItem("rag_active_session", "true");
 
             uploadCard.style.display = "none";
