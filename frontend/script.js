@@ -31,15 +31,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Check session state
     const activeSession = sessionStorage.getItem("rag_active_session");
-    const sessionID = sessionStorage.getItem("rag_session_id");
     const currentKey = localStorage.getItem("gemini_api_key");
     
-    if (activeSession && currentKey && sessionID) {
+    if (activeSession && currentKey) {
         uploadCard.style.display = "none";
         chatWorkspace.style.display = "flex";
     } else {
         sessionStorage.removeItem("rag_active_session");
-        sessionStorage.removeItem("rag_session_id");
         uploadCard.style.display = "flex";
         chatWorkspace.style.display = "none";
     }
@@ -48,7 +46,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (backButton) {
         backButton.addEventListener("click", () => {
             sessionStorage.removeItem("rag_active_session");
-            sessionStorage.removeItem("rag_session_id");
             chatWorkspace.style.display = "none";
             uploadCard.style.display = "flex";
             chatMessages.innerHTML = "";
@@ -59,16 +56,11 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Helper to generate headers including API Key and Session ID
     function getApiKeyHeaders() {
         const key = localStorage.getItem("gemini_api_key") || apiKeyInput.value.trim();
-        const sessionId = sessionStorage.getItem("rag_session_id") || "";
         const headers = {};
         if (key) {
             headers["X-Gemini-API-Key"] = key;
-        }
-        if (sessionId) {
-            headers["X-Session-ID"] = sessionId;
         }
         return headers;
     }
@@ -115,11 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const data = await response.json();
 
-            // Store active session flag and unique session ID returned by backend
             sessionStorage.setItem("rag_active_session", "true");
-            if (data.session_id) {
-                sessionStorage.setItem("rag_session_id", data.session_id);
-            }
 
             uploadCard.style.display = "none";
             chatWorkspace.style.display = "flex";
@@ -152,7 +140,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!apiKey) {
             alert("API Key missing! Returning to upload view.");
             sessionStorage.removeItem("rag_active_session");
-            sessionStorage.removeItem("rag_session_id");
             chatWorkspace.style.display = "none";
             uploadCard.style.display = "flex";
             return;
