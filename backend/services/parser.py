@@ -1,4 +1,4 @@
-import fitz  # PyMuPDF
+import pymupdf as fitz
 import os
 
 def parse_pdf(pdf_path: str, session_dir: str) -> list[str]:
@@ -13,7 +13,7 @@ def parse_pdf(pdf_path: str, session_dir: str) -> list[str]:
 
     for page_num in range(len(doc)):
         page = doc[page_num]
-        pix = page.get_pixmap(dpi=150)  # Balanced resolution for OCR/visual performance
+        pix = page.get_pixmap(dpi=150)
         
         filename = f"page_{page_num + 1}.jpg"
         filepath = os.path.join(session_dir, filename)
