@@ -1,22 +1,19 @@
 import fitz
 import os
-from .rag_engine import set_active_session_dir
 
-def parse_pdf(pdf_path: str, output_dir: str = None):
-    if output_dir is None:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        output_dir = os.path.join(base_dir, "data", "temp")
-        
+def parse_pdf(pdf_path: str, output_dir: str):
+    """
+    Rasterizes PDF pages into PNG images and saves them directly into the target session directory.
+    """
     os.makedirs(output_dir, exist_ok=True)
-    
-    # Sync this path with the rag engine session directory!
-    set_active_session_dir(output_dir)
     
     doc = fitz.open(pdf_path)
     for page in doc:
         pix = page.get_pixmap()
-        image_path = os.path.join(output_dir, f"page_{page.number}.png")
+        # Use 1-based indexing so page_1.png aligns with Gemini tool page queries
+        image_path = os.path.join(output_dir, f"page_{page.number + 1}.png")
         pix.save(image_path)
         
+    doc.close()
     print(f"[+] Successfully converted {len(doc)} pages to images in {output_dir}")
     return output_dir
