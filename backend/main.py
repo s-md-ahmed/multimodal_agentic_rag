@@ -18,7 +18,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Persistent in-memory session store: { session_id: { "dir": str, "history": list } }
+@app.get("/")
+def read_root():
+    return {"status": "online", "message": "PDF Vision RAG API is live."}
+
 SESSIONS = {}
 UPLOAD_BASE_DIR = "/tmp/pdf_sessions"
 
