@@ -5,30 +5,24 @@ from PIL import Image
 
 def create_session_agent(api_key: str, session_dir: str):
     """
-    Dynamically creates a Gemini chat agent bound strictly to a specific
-    session directory without using global variable state.
+    Creates a request-scoped Gemini chat agent bound strictly to session_dir.
     """
     client = genai.Client(api_key=api_key)
 
     def list_available_pages() -> list[str]:
-        """Lists all available PDF page image files in the local session directory."""
-        print(f"\n[AGENT CHECKING SESSION DIRECTORY: {session_dir}]\n")
+        """Lists all available page images in the session directory."""
         if not os.path.exists(session_dir):
             return []
         files = [f for f in os.listdir(session_dir) if f.endswith(".png")]
         return sorted(files)
 
     def query_pdf_with_gemini(query: str, page_number: int) -> str:
-        """Searches a specific page of the PDF document by its page number."""
-        print(f"\n[AGENT CHOSE PAGE {page_number}] -> Running query: '{query}'\n")
+        """Queries a specific page image by page number."""
         image_path = os.path.join(session_dir, f"page_{page_number}.png")
         
         if not os.path.exists(image_path):
-            error_msg = f"Error: Page {page_number} does not exist in the directory."
-            print(f"[-] {error_msg}")
-            return error_msg
+            return f"Error: Page {page_number} does not exist in this session."
 
-        # Load completely into memory buffer to avoid lazy PIL handle locks
         with Image.open(image_path) as raw_img:
             img = raw_img.convert("RGB").copy()
 
@@ -46,11 +40,10 @@ def create_session_agent(api_key: str, session_dir: str):
         model="gemini-2.5-flash",
         config=types.GenerateContentConfig(
             system_instruction=(
-                "You are a precise data-extraction tool. "
-                "1. First, call `list_available_pages()` to see what pages exist. "
-                "2. Then, choose the correct page number and call `query_pdf_with_gemini(query, page_number)` exactly once. "
-                "Do not loop. Answer the question directly and stop. "
-                "If the question cannot be answered using the provided document or pages, explicitly state that you don't know based on the document."
+                "You are a data-extraction assistant. "
+                "1. Call `list_available_pages()` to view available pages. "
+                "2. Call `query_pdf_with_gemini(query, page_number)` for the relevant page. "
+                "Return the answer based strictly on the document content."
             ),
             tools=[list_available_pages, query_pdf_with_gemini],
             temperature=0.0
