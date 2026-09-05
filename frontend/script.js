@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // FIX 1: Send request to /upload-pdf first and store returned session_id
+    // Send request to /upload-pdf first and store returned session_id
     uploadButton.addEventListener("click", async (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -131,7 +131,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // FIX 2: Send session_id along with prompt to /chat-with-pdf
+    // Send session_id along with prompt to /chat-with-pdf
     async function sendUserMessage() {
         const text = userInput.value.trim();
         if (!text) return;
@@ -180,14 +180,33 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // Helper to format raw markdown into clean HTML
+    function formatMarkdown(rawText) {
+        if (!rawText) return "";
+        return rawText
+            .replace(/^### (.*$)/gim, '<h3 style="margin: 8px 0 4px; font-size: 1.1em; font-weight: bold;">$1</h3>')
+            .replace(/^## (.*$)/gim, '<h2 style="margin: 10px 0 4px; font-size: 1.25em; font-weight: bold;">$1</h2>')
+            .replace(/^# (.*$)/gim, '<h1 style="margin: 12px 0 6px; font-size: 1.4em; font-weight: bold;">$1</h1>')
+            .replace(/^---$/gim, '<hr style="border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 10px 0;">')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n/g, '<br>');
+    }
+
     function appendMessage(text, className) {
         const messageDiv = document.createElement("div");
         messageDiv.classList.add("message", className.split(" ")[0]);
         if (className.includes("thinking-bubble")) {
             messageDiv.classList.add("thinking-bubble");
         }
-        const cleanText = text.replace(/\*\*/g, "").replace(/\*/g, "");
-        messageDiv.textContent = cleanText;
+
+        // Use formatMarkdown for standard message rendering via innerHTML
+        if (className.includes("thinking-bubble")) {
+            messageDiv.textContent = text;
+        } else {
+            messageDiv.innerHTML = formatMarkdown(text);
+        }
+
         chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         return messageDiv;
