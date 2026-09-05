@@ -1,226 +1,87 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const uploadButton = document.getElementById("start-button");
-    const fileInput = document.getElementById("pdf-file-input");
-    const uploadCard = document.getElementById("upload-card");
-    const chatWorkspace = document.getElementById("chat-workspace");
-    const sendButton = document.getElementById("send-button");
+    const uploadForm = document.getElementById("upload-form");
+    const pdfFileInput = document.getElementById("pdf-file");
+    const apiKeyInput = document.getElementById("api-key");
+    const chatSection = document.getElementById("chat-section");
+    const chatForm = document.getElementById("chat-form");
     const userInput = document.getElementById("user-input");
     const chatMessages = document.getElementById("chat-messages");
-    const backButton = document.getElementById("back-to-upload-btn");
-    const apiKeyInput = document.getElementById("api-key-input");
 
-    let selectedFile = null;
+    let activeSessionId = null;
 
-    // Load saved API key if present
-    const savedKey = localStorage.getItem("gemini_api_key");
-    if (savedKey) {
-        apiKeyInput.value = savedKey;
-    }
+    uploadForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const apiKey = apiKeyInput.value.trim();
+        const file = pdfFileInput.files[0];
 
-    // Save key automatically as user types
-    apiKeyInput.addEventListener("input", () => {
-        const key = apiKeyInput.value.trim();
-        if (key) {
-            localStorage.setItem("gemini_api_key", key);
-        } else {
-            localStorage.removeItem("gemini_api_key");
-        }
-    });
-
-    // Check session state
-    const activeSessionId = sessionStorage.getItem("rag_session_id");
-    const currentKey = localStorage.getItem("gemini_api_key");
-
-    if (activeSessionId && currentKey) {
-        uploadCard.style.display = "none";
-        chatWorkspace.style.display = "flex";
-    } else {
-        sessionStorage.removeItem("rag_session_id");
-        uploadCard.style.display = "flex";
-        chatWorkspace.style.display = "none";
-    }
-
-    // Back to upload button logic
-    if (backButton) {
-        backButton.addEventListener("click", () => {
-            sessionStorage.removeItem("rag_session_id");
-            chatWorkspace.style.display = "none";
-            uploadCard.style.display = "flex";
-            chatMessages.innerHTML = "";
-            selectedFile = null;
-            fileInput.value = "";
-            uploadButton.disabled = false;
-            uploadButton.textContent = "Upload & Start Chat";
-        });
-    }
-
-    function getApiKeyHeaders() {
-        const key = localStorage.getItem("gemini_api_key") || apiKeyInput.value.trim();
-        const headers = {};
-        if (key) {
-            headers["X-Gemini-API-Key"] = key;
-        }
-        return headers;
-    }
-
-    fileInput.addEventListener("change", (event) => {
-        if (event.target.files.length > 0) {
-            selectedFile = event.target.files[0];
-        }
-    });
-
-    // Upload PDF handler
-    uploadButton.addEventListener("click", async (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-
-        const apiKey = localStorage.getItem("gemini_api_key") || apiKeyInput.value.trim();
-        if (!apiKey) {
-            alert("Please enter your Gemini API Key!");
+        if (!apiKey || !file) {
+            alert("Please provide both an API Key and a PDF file.");
             return;
         }
-
-        if (!selectedFile) {
-            alert("Please choose a PDF file!");
-            return;
-        }
-
-        uploadButton.disabled = true;
-        uploadButton.textContent = "Uploading & Processing PDF...";
 
         const formData = new FormData();
-        formData.append("file", selectedFile);
+        formData.append("file", file);
 
         try {
-            const response = await fetch("/upload-pdf", {
+            const res = await fetch("http://127.0.0.1:8000/upload-pdf", {
                 method: "POST",
-                headers: getApiKeyHeaders(),
+                headers: { "X-Gemini-Api-Key": apiKey },
                 body: formData
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Server returned status ${response.status}: ${errorText}`);
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Upload failed");
             }
 
-            const data = await response.json();
-            
-            // Store session ID for subsequent chat queries
-            sessionStorage.setItem("rag_session_id", data.session_id);
+            const data = await res.json();
+            activeSessionId = data.session_id;
 
-            uploadCard.style.display = "none";
-            chatWorkspace.style.display = "flex";
-
+            appendMessage("system", `PDF uploaded successfully. ${data.message}`);
+            chatSection.style.display = "block";
         } catch (error) {
-            console.error("DETAILED UPLOAD ERROR:", error);
-            alert("FAILED: " + error.message);
-            uploadButton.disabled = false;
-            uploadButton.textContent = "Upload & Start Chat";
+            alert(`Error: ${error.message}`);
         }
     });
 
-    sendButton.addEventListener("click", (event) => {
-        event.preventDefault();
-        sendUserMessage();
-    });
+    chatForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const promptText = userInput.value.trim();
+        const apiKey = apiKeyInput.value.trim();
 
-    userInput.addEventListener("keypress", (e) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            sendUserMessage();
-        }
-    });
+        if (!promptText || !activeSessionId) return;
 
-    // Chat Message Handler
-    async function sendUserMessage() {
-        const text = userInput.value.trim();
-        if (!text) return;
-
-        const apiKey = localStorage.getItem("gemini_api_key");
-        const sessionId = sessionStorage.getItem("rag_session_id");
-
-        if (!apiKey || !sessionId) {
-            alert("Session or API key missing! Returning to upload view.");
-            sessionStorage.removeItem("rag_session_id");
-            chatWorkspace.style.display = "none";
-            uploadCard.style.display = "flex";
-            return;
-        }
-
-        appendMessage(text, "user-message");
+        appendMessage("user", promptText);
         userInput.value = "";
 
-        // Append initial thinking state
-        const botMessageDiv = appendMessage("Thinking...", "agent-message thinking-bubble");
+        const formData = new FormData();
+        formData.append("prompt", promptText);
+        formData.append("session_id", activeSessionId);
 
         try {
-            const formData = new FormData();
-            formData.append("prompt", text);
-            formData.append("session_id", sessionId);
-
-            const response = await fetch("/chat-with-pdf", {
+            const res = await fetch("http://127.0.0.1:8000/chat-with-pdf", {
                 method: "POST",
-                headers: getApiKeyHeaders(),
+                headers: { "X-Gemini-Api-Key": apiKey },
                 body: formData
             });
 
-            if (!response.ok) {
-                let errorMsg = "Server error " + response.status;
-                try {
-                    const errData = await response.json();
-                    errorMsg = errData.detail || errData.error || errorMsg;
-                } catch (_) {
-                    errorMsg = await response.text();
-                }
-                throw new Error(errorMsg);
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Chat request failed");
             }
 
-            const data = await response.json();
-            
-            // Remove thinking indicator
-            botMessageDiv.classList.remove("thinking-bubble");
-
-            // Check for common backend key names dynamically
-            const answerText = data.response || data.answer || data.text || data.message || (typeof data === "string" ? data : null);
-
-            if (answerText) {
-                botMessageDiv.innerHTML = formatMarkdown(answerText);
-            } else {
-                console.warn("Unexpected backend payload structure:", data);
-                botMessageDiv.innerHTML = "<em>No response text found in model output.</em>";
-            }
-        } catch (err) {
-            console.error("Chat error:", err);
-            botMessageDiv.classList.remove("thinking-bubble");
-            botMessageDiv.textContent = "Error: " + err.message;
+            const data = await res.json();
+            appendMessage("assistant", data.response);
+        } catch (error) {
+            appendMessage("system", `Error: ${error.message}`);
         }
-    }
+    });
 
-    // Markdown Formatter
-    function formatMarkdown(rawText) {
-        if (!rawText) return "";
-        return rawText
-            .replace(/^### (.*$)/gim, '<h3 style="margin: 8px 0 4px; font-size: 1.1em; font-weight: bold;">$1</h3>')
-            .replace(/^## (.*$)/gim, '<h2 style="margin: 10px 0 4px; font-size: 1.25em; font-weight: bold;">$1</h2>')
-            .replace(/^# (.*$)/gim, '<h1 style="margin: 12px 0 6px; font-size: 1.4em; font-weight: bold;">$1</h1>')
-            .replace(/^---$/gim, '<hr style="border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 10px 0;">')
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/\n/g, '<br>');
-    }
-
-    function appendMessage(text, className) {
-        const messageDiv = document.createElement("div");
-        messageDiv.className = `message ${className}`;
-
-        if (className.includes("thinking-bubble") || className.includes("user-message")) {
-            messageDiv.textContent = text;
-        } else {
-            messageDiv.innerHTML = formatMarkdown(text);
-        }
-
-        chatMessages.appendChild(messageDiv);
+    function appendMessage(role, text) {
+        const msgDiv = document.createElement("div");
+        msgDiv.className = `message ${role}`;
+        msgDiv.textContent = text;
+        chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
-        return messageDiv;
     }
 });
