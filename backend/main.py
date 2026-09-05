@@ -1,8 +1,11 @@
 import os
 import shutil
 import uuid
+from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, Form, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from services.parser import parse_pdf
@@ -18,12 +21,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-def read_root():
-    return {"status": "online", "message": "PDF Vision RAG API is live."}
-
 SESSIONS = {}
 UPLOAD_BASE_DIR = "/tmp/pdf_sessions"
+
+# Resolve absolute path to frontend directory
+BASE_DIR = Path(__file__).resolve().parent.parent
+FRONTEND_DIR = BASE_DIR / "frontend"
 
 class ChatResponse(BaseModel):
     response: str
@@ -84,8 +87,6 @@ async def chat_with_pdf(
 
         response = chat.send_message(prompt)
 
-        # PREVENT EMPTY ANSWERS:
-        # If max tool calls hit before narrative text generation, force a final response.
         if not response.text or not response.text.strip():
             force_text_response = chat.send_message(
                 "Based on the tool calls and page inspections performed so far, "
@@ -95,10 +96,8 @@ async def chat_with_pdf(
         else:
             final_text = response.text
 
-        # Persist updated conversation history
         session_data["history"] = chat.get_history()
 
-        # Hard fallback safety check
         if not final_text or not final_text.strip():
             final_text = "Analysis completed, but no text could be generated from the selected pages."
 
@@ -106,3 +105,14 @@ async def chat_with_pdf(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent Error: {str(e)}")
+
+# Mount static frontend assets
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+
+# Serve index.html at root route
+@app.get("/")
+async def serve_ui():
+    index_path = FRONTEND_DIR / "index.html"
+    if not index_path.exists():
+        raise HTTPException(status_code=404, detail="index.html not found in frontend directory.")
+    return FileResponse(index_path)
