@@ -8,15 +8,15 @@ def parse_pdf(pdf_path: str, output_dir: str = None):
         output_dir = os.path.join(base_dir, "data", "temp")
         
     os.makedirs(output_dir, exist_ok=True)
-    
-    # Sync this path with the rag engine session directory!
     set_active_session_dir(output_dir)
     
     doc = fitz.open(pdf_path)
     for page in doc:
         pix = page.get_pixmap()
         image_path = os.path.join(output_dir, f"page_{page.number + 1}.png")
+        # Save image bytes explicitly to release file handle before document closes
         pix.save(image_path)
+        del pix  # Explicitly clear pixmap handle from memory
         
     doc.close()
     print(f"[+] Successfully converted {len(doc)} pages to images in {output_dir}")
