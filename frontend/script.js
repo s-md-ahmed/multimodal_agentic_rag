@@ -7,8 +7,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const userInput = document.getElementById("user-input");
     const chatMessages = document.getElementById("chat-messages");
     const backButton = document.getElementById("back-to-upload-btn");
-    
-    // API Key Element inside Upload Card
     const apiKeyInput = document.getElementById("api-key-input");
 
     let selectedFile = null;
@@ -19,7 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
         apiKeyInput.value = savedKey;
     }
 
-    // Save key automatically as user types it
+    // Save key automatically as user types
     apiKeyInput.addEventListener("input", () => {
         const key = apiKeyInput.value.trim();
         if (key) {
@@ -30,14 +28,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Check session state
-    const activeSession = sessionStorage.getItem("rag_active_session");
+    const activeSessionId = sessionStorage.getItem("rag_session_id");
     const currentKey = localStorage.getItem("gemini_api_key");
-    
-    if (activeSession && currentKey) {
+
+    if (activeSessionId && currentKey) {
         uploadCard.style.display = "none";
         chatWorkspace.style.display = "flex";
     } else {
-        sessionStorage.removeItem("rag_active_session");
+        sessionStorage.removeItem("rag_session_id");
         uploadCard.style.display = "flex";
         chatWorkspace.style.display = "none";
     }
@@ -45,7 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Back to upload button logic
     if (backButton) {
         backButton.addEventListener("click", () => {
-            sessionStorage.removeItem("rag_active_session");
+            sessionStorage.removeItem("rag_session_id");
             chatWorkspace.style.display = "none";
             uploadCard.style.display = "flex";
             chatMessages.innerHTML = "";
@@ -64,13 +62,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         return headers;
     }
-    
+
     fileInput.addEventListener("change", (event) => {
         if (event.target.files.length > 0) {
             selectedFile = event.target.files[0];
         }
     });
 
+    // FIX 1: Send request to /upload-pdf first and store returned session_id
     uploadButton.addEventListener("click", async (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -87,14 +86,13 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         uploadButton.disabled = true;
-        uploadButton.textContent = "Uploading...";
+        uploadButton.textContent = "Uploading & Processing PDF...";
 
         const formData = new FormData();
-        formData.append("prompt", "PDF uploaded. Standing by for user prompt.");
         formData.append("file", selectedFile);
-        
+
         try {
-            const response = await fetch("/chat-with-pdf", {
+            const response = await fetch("/upload-pdf", {
                 method: "POST",
                 headers: getApiKeyHeaders(),
                 body: formData
@@ -106,19 +104,20 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const data = await response.json();
-
-            sessionStorage.setItem("rag_active_session", "true");
+            
+            // Store session ID for subsequent chat queries
+            sessionStorage.setItem("rag_session_id", data.session_id);
 
             uploadCard.style.display = "none";
             chatWorkspace.style.display = "flex";
 
         } catch (error) {
-            console.error("DETAILED FETCH ERROR:", error);
+            console.error("DETAILED UPLOAD ERROR:", error);
             alert("FAILED: " + error.message);
             uploadButton.disabled = false;
             uploadButton.textContent = "Upload & Start Chat";
         }
-    }); 
+    });
 
     sendButton.addEventListener("click", (event) => {
         event.preventDefault();
@@ -132,14 +131,17 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // FIX 2: Send session_id along with prompt to /chat-with-pdf
     async function sendUserMessage() {
         const text = userInput.value.trim();
         if (!text) return;
 
         const apiKey = localStorage.getItem("gemini_api_key");
-        if (!apiKey) {
-            alert("API Key missing! Returning to upload view.");
-            sessionStorage.removeItem("rag_active_session");
+        const sessionId = sessionStorage.getItem("rag_session_id");
+
+        if (!apiKey || !sessionId) {
+            alert("Session or API key missing! Returning to upload view.");
+            sessionStorage.removeItem("rag_session_id");
             chatWorkspace.style.display = "none";
             uploadCard.style.display = "flex";
             return;
@@ -153,6 +155,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const formData = new FormData();
             formData.append("prompt", text);
+            formData.append("session_id", sessionId);
 
             const response = await fetch("/chat-with-pdf", {
                 method: "POST",
@@ -160,7 +163,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: formData
             });
 
-            if (!response.ok) throw new Error("Server error " + response.status);
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || "Server error " + response.status);
+            }
 
             const data = await response.json();
             thinkingId.remove();
@@ -170,21 +176,20 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (err) {
             console.error("Chat error:", err);
             thinkingId.remove();
-            appendMessage("The resource limit is exhausted or invalid API key provided.", "agent-message");
+            appendMessage("Error: " + err.message, "agent-message");
         }
     }
 
     function appendMessage(text, className) {
         const messageDiv = document.createElement("div");
-        messageDiv.classList.add("message", className.split(" ")[0]); 
-        if (className.includes("thinking-bubble")) { 
-            messageDiv.style.fontStyle = "italic";
-            messageDiv.style.opacity = "0.7";
+        messageDiv.classList.add("message", className.split(" ")[0]);
+        if (className.includes("thinking-bubble")) {
+            messageDiv.classList.add("thinking-bubble");
         }
         const cleanText = text.replace(/\*\*/g, "").replace(/\*/g, "");
-        messageDiv.textContent = cleanText; 
-        chatMessages.appendChild(messageDiv); 
-        chatMessages.scrollTop = chatMessages.scrollHeight; 
+        messageDiv.textContent = cleanText;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
         return messageDiv;
     }
 });
