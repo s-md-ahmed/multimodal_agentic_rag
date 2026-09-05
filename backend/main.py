@@ -1,20 +1,14 @@
 import os
-import tempfile
-import uuid
-import time
 import shutil
-import traceback
-from typing import Optional
-
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Header
+import uuid
+from fastapi import FastAPI, UploadFile, File, Form, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from google.genai.errors import ServerError, ClientError
+from pydantic import BaseModel
 
 from services.parser import parse_pdf
 from services.rag_engine import create_session_agent
 
-app = FastAPI()
+app = FastAPI(title="PDF Vision RAG Agent")
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,117 +18,88 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-SESSION_STORE: dict[str, dict] = {}
-SESSION_TTL_SECONDS = 3600  # Delete local temp dirs after 1 hour
+# Persistent in-memory session store: { session_id: { "dir": str, "history": list } }
+SESSIONS = {}
+UPLOAD_BASE_DIR = "/tmp/pdf_sessions"
 
-
-def cleanup_stale_sessions():
-    """Cleans up expired session directories from temp storage."""
-    now = time.time()
-    expired_ids = [
-        sid for sid, data in SESSION_STORE.items()
-        if now - data["created_at"] > SESSION_TTL_SECONDS
-    ]
-    for sid in expired_ids:
-        data = SESSION_STORE.pop(sid, None)
-        if data and os.path.exists(data["dir"]):
-            try:
-                shutil.rmtree(data["dir"])
-            except Exception as e:
-                print(f"[CLEANUP ERROR] {e}")
-
+class ChatResponse(BaseModel):
+    response: str
+    session_id: str
 
 @app.post("/upload-pdf")
 async def upload_pdf(
     file: UploadFile = File(...),
-    x_gemini_api_key: Optional[str] = Header(None, alias="X-Gemini-API-Key")
+    x_gemini_api_key: str = Header(..., alias="X-Gemini-Api-Key")
 ):
-    cleanup_stale_sessions()
-
-    if not x_gemini_api_key:
-        raise HTTPException(status_code=401, detail="X-Gemini-API-Key header missing.")
-
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
 
+    session_id = str(uuid.uuid4())
+    session_dir = os.path.join(UPLOAD_BASE_DIR, session_id)
+    os.makedirs(session_dir, exist_ok=True)
+
+    temp_pdf_path = os.path.join(session_dir, "document.pdf")
+    with open(temp_pdf_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
     try:
-        session_id = str(uuid.uuid4())
-        session_dir = tempfile.mkdtemp(prefix=f"rag_session_{session_id}_")
-
-        pdf_path = os.path.join(session_dir, file.filename)
-        contents = await file.read()
-        with open(pdf_path, "wb") as f:
-            f.write(contents)
-
-        parse_pdf(pdf_path, session_dir)
-
-        SESSION_STORE[session_id] = {
-            "dir": session_dir,
-            "created_at": time.time()
-        }
-
-        return {
-            "session_id": session_id,
-            "response": "PDF parsed and uploaded successfully."
-        }
-
+        pages = parse_pdf(temp_pdf_path, session_dir)
     except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        shutil.rmtree(session_dir, ignore_errors=True)
+        raise HTTPException(status_code=500, detail=f"Failed to parse PDF: {str(e)}")
 
+    SESSIONS[session_id] = {
+        "dir": session_dir,
+        "history": []
+    }
 
-@app.post("/chat-with-pdf")
+    return {
+        "session_id": session_id,
+        "message": f"Successfully processed {len(pages)} pages.",
+        "pages": pages
+    }
+
+@app.post("/chat-with-pdf", response_model=ChatResponse)
 async def chat_with_pdf(
     prompt: str = Form(...),
     session_id: str = Form(...),
-    x_gemini_api_key: Optional[str] = Header(None, alias="X-Gemini-API-Key")
+    x_gemini_api_key: str = Header(..., alias="X-Gemini-Api-Key")
 ):
-    cleanup_stale_sessions()
+    if session_id not in SESSIONS:
+        raise HTTPException(status_code=404, detail="Session not found or expired.")
 
-    if not x_gemini_api_key:
-        raise HTTPException(status_code=401, detail="X-Gemini-API-Key header missing.")
-
-    session_data = SESSION_STORE.get(session_id)
-    if not session_data or not os.path.exists(session_data["dir"]):
-        raise HTTPException(
-            status_code=404,
-            detail="Session expired or invalid. Please upload your PDF again."
-        )
-
+    session_data = SESSIONS[session_id]
     session_dir = session_data["dir"]
+    chat_history = session_data["history"]
 
     try:
-        agent_chat = create_session_agent(x_gemini_api_key, session_dir)
+        chat = create_session_agent(
+            api_key=x_gemini_api_key, 
+            session_dir=session_dir,
+            chat_history=chat_history
+        )
 
-        max_retries = 3
-        delay = 2
-        response = None
+        response = chat.send_message(prompt)
 
-        for attempt in range(max_retries):
-            try:
-                response = agent_chat.send_message(prompt)
-                break
-            except (ServerError, ClientError) as api_err:
-                err_str = str(api_err)
-                if ("503" in err_str or "429" in err_str) and attempt < max_retries - 1:
-                    time.sleep(delay)
-                    delay *= 2
-                    continue
-                raise api_err
+        # PREVENT EMPTY ANSWERS:
+        # If max tool calls hit before narrative text generation, force a final response.
+        if not response.text or not response.text.strip():
+            force_text_response = chat.send_message(
+                "Based on the tool calls and page inspections performed so far, "
+                "provide a complete answer right now. Do NOT call any more tools."
+            )
+            final_text = force_text_response.text
+        else:
+            final_text = response.text
 
-        return {"response": response.text}
+        # Persist updated conversation history
+        session_data["history"] = chat.get_history()
+
+        # Hard fallback safety check
+        if not final_text or not final_text.strip():
+            final_text = "Analysis completed, but no text could be generated from the selected pages."
+
+        return ChatResponse(response=final_text, session_id=session_id)
 
     except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# Mount existing frontend folder directly if present
-frontend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
-if os.path.exists(frontend_path):
-    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port)
+        raise HTTPException(status_code=500, detail=f"Agent Error: {str(e)}")
