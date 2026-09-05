@@ -104,7 +104,14 @@ document.addEventListener("DOMContentLoaded", () => {
     function appendMessage(className, text) {
         const msgDiv = document.createElement("div");
         msgDiv.className = `message ${className}`;
-        msgDiv.textContent = text;
+        
+        // Clean up Markdown symbols cleanly while retaining formatting structure
+        const cleanText = text
+            .replace(/\*\*/g, '')                // Removes bold **
+            .replace(/###\s?/g, '')              // Removes header ###
+            .replace(/^\s*[\*\-]\s+/gm, '• ');   // Replaces markdown list bullets with clean bullet points
+
+        msgDiv.textContent = cleanText;
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         return msgDiv;
