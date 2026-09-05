@@ -9,8 +9,9 @@ def parse_pdf(pdf_path: str, session_dir: str) -> str:
     os.makedirs(session_dir, exist_ok=True)
     
     doc = fitz.open(pdf_path)
+    total_pages = len(doc)  # Capture page count while doc is open
     try:
-        for page_idx in range(len(doc)):
+        for page_idx in range(total_pages):
             page = doc[page_idx]
             pix = page.get_pixmap()
             
@@ -20,5 +21,5 @@ def parse_pdf(pdf_path: str, session_dir: str) -> str:
     finally:
         doc.close()
         
-    print(f"[+] Converted {len(doc)} pages to images in {session_dir}")
+    print(f"[+] Converted {total_pages} pages to images in {session_dir}")
     return session_dir
