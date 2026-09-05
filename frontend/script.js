@@ -150,7 +150,8 @@ document.addEventListener("DOMContentLoaded", () => {
         appendMessage(text, "user-message");
         userInput.value = "";
 
-        const thinkingId = appendMessage("Thinking...", "agent-message thinking-bubble");
+        // Create container ONCE with thinking status
+        const botMessageDiv = appendMessage("Thinking...", "agent-message thinking-bubble");
 
         try {
             const formData = new FormData();
@@ -169,18 +170,23 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const data = await response.json();
-            thinkingId.remove();
+            
+            // Remove thinking state class and update content in-place
+            botMessageDiv.classList.remove("thinking-bubble");
+
             if (data && data.response) {
-                appendMessage(data.response, "agent-message");
+                botMessageDiv.innerHTML = formatMarkdown(data.response);
+            } else {
+                botMessageDiv.innerHTML = "<em>No response returned from model.</em>";
             }
         } catch (err) {
             console.error("Chat error:", err);
-            thinkingId.remove();
-            appendMessage("Error: " + err.message, "agent-message");
+            botMessageDiv.classList.remove("thinking-bubble");
+            botMessageDiv.textContent = "Error: " + err.message;
         }
     }
 
-    // Helper to format raw markdown into clean HTML
+    // Convert Markdown tags to HTML tags
     function formatMarkdown(rawText) {
         if (!rawText) return "";
         return rawText
@@ -200,8 +206,7 @@ document.addEventListener("DOMContentLoaded", () => {
             messageDiv.classList.add("thinking-bubble");
         }
 
-        // Use formatMarkdown for standard message rendering via innerHTML
-        if (className.includes("thinking-bubble")) {
+        if (className.includes("thinking-bubble") || className.includes("user-message")) {
             messageDiv.textContent = text;
         } else {
             messageDiv.innerHTML = formatMarkdown(text);
