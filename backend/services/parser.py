@@ -1,25 +1,24 @@
-import fitz
+import fitz  # PyMuPDF
 import os
 
-def parse_pdf(pdf_path: str, session_dir: str) -> str:
+def parse_pdf(pdf_path: str, session_dir: str) -> list[str]:
     """
-    Parses a PDF into PNG images in an isolated session directory.
-    Converts pixmap to raw bytes immediately so the doc handle closes safely.
+    Renders each page of the PDF into a JPEG image, saves it in session_dir,
+    and returns a list of image filenames.
     """
     os.makedirs(session_dir, exist_ok=True)
     
     doc = fitz.open(pdf_path)
-    total_pages = len(doc)  # Capture page count while doc is open
-    try:
-        for page_idx in range(total_pages):
-            page = doc[page_idx]
-            pix = page.get_pixmap()
-            
-            # Save as PNG
-            image_path = os.path.join(session_dir, f"page_{page_idx + 1}.png")
-            pix.save(image_path)
-    finally:
-        doc.close()
+    image_paths = []
+
+    for page_num in range(len(doc)):
+        page = doc[page_num]
+        pix = page.get_pixmap(dpi=150)  # Balanced resolution for OCR/visual performance
         
-    print(f"[+] Converted {total_pages} pages to images in {session_dir}")
-    return session_dir
+        filename = f"page_{page_num + 1}.jpg"
+        filepath = os.path.join(session_dir, filename)
+        pix.save(filepath)
+        image_paths.append(filename)
+
+    doc.close()
+    return image_paths
