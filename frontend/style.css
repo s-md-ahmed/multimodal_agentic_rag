@@ -42,12 +42,6 @@ body {
     font-size: 0.95rem;
 }
 
-.upload-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
 input[type="file"] {
     background: #0f172a;
     padding: 0.75rem;
@@ -73,6 +67,11 @@ button:hover {
     background-color: #0369a1;
 }
 
+button:disabled {
+    background-color: #475569;
+    cursor: not-allowed;
+}
+
 /* Chat Workspace Styling */
 #chat-workspace {
     height: 80vh;
@@ -95,6 +94,15 @@ button:hover {
 .chat-header h2 {
     font-size: 1.1rem;
     color: #f8fafc;
+}
+
+.chat-header button {
+    padding: 4px 10px;
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 12px;
 }
 
 .status-indicator {
@@ -136,6 +144,11 @@ button:hover {
     border-bottom-left-radius: 2px;
 }
 
+.thinking-bubble {
+    font-style: italic;
+    opacity: 0.7;
+}
+
 .chat-input-area {
     display: flex;
     padding: 1rem;
@@ -143,7 +156,7 @@ button:hover {
     border-bottom-left-radius: 12px;
     border-bottom-right-radius: 12px;
     border-top: 1px solid #334155;
-    gap: 0.75s;
+    gap: 0.75rem;
 }
 
 .chat-input-area input[type="text"] {
@@ -155,10 +168,6 @@ button:hover {
     color: white;
     font-size: 0.95rem;
     outline: none;
-}
-.thinking-bubble {
-    font-style: italic;
-    opacity: 0.7;
 }
 
 .chat-input-area input[type="text"]:focus {
