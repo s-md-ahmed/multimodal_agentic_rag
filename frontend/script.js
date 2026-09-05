@@ -12,11 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const backBtn = document.getElementById("back-to-upload-btn");
 
     let activeSessionId = null;
-
-    // Dynamically choose base URL (Render hosted origin vs local dev)
-    const API_BASE_URL = window.location.origin.includes("onrender.com") 
-        ? window.location.origin 
-        : "http://127.0.0.1:8000";
+    const API_BASE_URL = window.location.origin;
 
     uploadForm.addEventListener("submit", async (e) => {
         e.preventDefault();
