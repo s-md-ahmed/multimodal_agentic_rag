@@ -1,19 +1,21 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Header
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from services.rag_engine import set_active_session_dir, get_temp_dir
-from services.parser import parse_pdf
-from google import genai
-from google.genai import types
-from google.genai.errors import ServerError, ClientError
 import os
 import tempfile
 import uuid
 import time
+import shutil
 import traceback
 from typing import Optional
 
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Header
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from google.genai.errors import ServerError, ClientError
+
+from services.parser import parse_pdf
+from services.rag_engine import create_session_agent
+
 app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,97 +24,98 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-CURRENT_SESSION = {"dir": os.path.join(tempfile.gettempdir(), "multimodal_rag_temp")}
+# Store mapped sessions: session_id -> {"dir": session_dir, "created_at": timestamp}
+SESSION_STORE: dict[str, dict] = {}
+SESSION_TTL_SECONDS = 3600  # 1 hour expiration for temporary disk cleanup
 
-def create_user_agent_chat(api_key: str):
-    """Dynamically creates a chat session bound to the user's specific API key."""
-    client = genai.Client(api_key=api_key)
-    
-    # Define local tool closures bound to this client's active session directory
-    def list_available_pages() -> list[str]:
-        """Lists all available PDF page image files in the local directory."""
-        folder_path = get_temp_dir()
-        print(f"\n[AGENT CHECKING FOLDER DIRECTORY: {folder_path}]\n")
-        if not os.path.exists(folder_path):
-            return []
-        files = [f for f in os.listdir(folder_path) if f.endswith(".png")]
-        return sorted(files)
 
-    def query_pdf_with_gemini(query: str, page_number: int) -> str:
-        """Searches a specific page of the PDF document by its page number."""
-        folder_path = get_temp_dir()
-        print(f"\n[AGENT CHOSE PAGE {page_number}] -> Running query: '{query}'\n")
-        image_path = os.path.join(folder_path, f"page_{page_number}.png")
-        if not os.path.exists(image_path):
-            return f"Error: Page {page_number} does not exist in the directory."
-        
-        from PIL import Image
-        with Image.open(image_path) as raw_img:
-            img = raw_img.convert("RGB")
-            img.load()
-        
-        response = client.models.generate_content(
-            model="gemini-2.5-flash", 
-            contents=[img, query],
-            config=types.GenerateContentConfig(
-                tools=[],
-                temperature=0.0
-            )
+def cleanup_stale_sessions():
+    """Removes temporary directories older than TTL to avoid filling container storage."""
+    now = time.time()
+    expired_ids = []
+    for sid, data in SESSION_STORE.items():
+        if now - data["created_at"] > SESSION_TTL_SECONDS:
+            expired_ids.append(sid)
+
+    for sid in expired_ids:
+        data = SESSION_STORE.pop(sid, None)
+        if data and os.path.exists(data["dir"]):
+            try:
+                shutil.rmtree(data["dir"])
+                print(f"[CLEANUP] Removed expired session directory: {data['dir']}")
+            except Exception as e:
+                print(f"[CLEANUP ERROR] Failed to delete {data['dir']}: {e}")
+
+
+@app.post("/upload-pdf")
+async def upload_pdf(
+    file: UploadFile = File(...),
+    x_gemini_api_key: Optional[str] = Header(None, alias="X-Gemini-API-Key")
+):
+    cleanup_stale_sessions()
+
+    if not x_gemini_api_key:
+        raise HTTPException(
+            status_code=401,
+            detail="Gemini API Key missing in headers."
         )
-        return response.text
 
-    return client.chats.create(
-        model="gemini-2.5-flash",
-        config=types.GenerateContentConfig(
-            system_instruction=(
-                "You are a precise data-extraction tool. "
-                "1. First, call `list_available_pages()` to see what pages exist. "
-                "2. Then, choose the correct page number and call `query_pdf_with_gemini(query, page_number)` exactly once. "
-                "Do not loop. Answer the question directly and stop. "
-                "If the question cannot be answered using the provided document or pages, explicitly state that you don't know based on the document."
-            ),
-            tools=[list_available_pages, query_pdf_with_gemini], 
-            temperature=0.0
-        )
-    )
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+
+    try:
+        session_id = str(uuid.uuid4())
+        session_dir = tempfile.mkdtemp(prefix=f"rag_session_{session_id}_")
+
+        pdf_path = os.path.join(session_dir, file.filename)
+        contents = await file.read()
+        with open(pdf_path, "wb") as f:
+            f.write(contents)
+
+        # Parse document synchronously into isolated session folder
+        parse_pdf(pdf_path, session_dir)
+
+        SESSION_STORE[session_id] = {
+            "dir": session_dir,
+            "created_at": time.time()
+        }
+
+        return {
+            "session_id": session_id,
+            "response": "PDF uploaded and parsed successfully."
+        }
+
+    except Exception as e:
+        print("--- UPLOAD ERROR TRACEBACK ---")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/chat-with-pdf")
 async def chat_with_pdf(
-    prompt: str = Form(None), 
-    file: UploadFile = File(None),
-    x_gemini_api_key: Optional[str] = Header(None)
+    prompt: str = Form(...),
+    session_id: str = Form(...),
+    x_gemini_api_key: Optional[str] = Header(None, alias="X-Gemini-API-Key")
 ):
+    cleanup_stale_sessions()
+
+    if not x_gemini_api_key:
+        raise HTTPException(
+            status_code=401,
+            detail="Gemini API Key missing in headers."
+        )
+
+    session_data = SESSION_STORE.get(session_id)
+    if not session_data or not os.path.exists(session_data["dir"]):
+        raise HTTPException(
+            status_code=404,
+            detail="Active session expired or not found. Please upload your PDF again."
+        )
+
+    session_dir = session_data["dir"]
+
     try:
-        if not x_gemini_api_key:
-            raise HTTPException(
-                status_code=401, 
-                detail="Gemini API Key is missing. Please enter your key in the top right settings bar."
-            )
-
-        if file is not None:
-            session_id = str(uuid.uuid4())
-            temp_dir = os.path.join(tempfile.gettempdir(), f"multimodal_rag_{session_id}")
-            os.makedirs(temp_dir, exist_ok=True)
-            
-            CURRENT_SESSION["dir"] = temp_dir
-            set_active_session_dir(temp_dir)
-
-            pdf_path = os.path.join(temp_dir, file.filename)
-            
-            contents = await file.read()
-            with open(pdf_path, "wb") as f:
-                f.write(contents)
-            
-            parse_pdf(pdf_path, temp_dir)
-            return {"response": "PDF uploaded and parsed successfully."}
-
-        if not prompt:
-            return {"response": "No prompt provided."}
-
-        set_active_session_dir(CURRENT_SESSION["dir"])
-        
-        # Instantiate dynamic session using the user's provided key
-        agent_chat = create_user_agent_chat(x_gemini_api_key)
+        agent_chat = create_session_agent(x_gemini_api_key, session_dir)
 
         max_retries = 3
         delay = 2
@@ -126,21 +129,24 @@ async def chat_with_pdf(
                 err_str = str(api_err)
                 if "503" in err_str or "429" in err_str:
                     if attempt < max_retries - 1:
-                        print(f"--- API busy/rate-limited (Attempt {attempt + 1}), retrying in {delay}s... ---")
+                        print(f"--- API Busy/Rate-Limited (Attempt {attempt + 1}), retrying in {delay}s... ---")
                         time.sleep(delay)
-                        delay *= 2 
+                        delay *= 2
                         continue
                 raise api_err
 
         return {"response": response.text}
-        
+
     except Exception as e:
-        print("--- BACKEND ERROR TRACEBACK ---")
+        print("--- CHAT ERROR TRACEBACK ---")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-frontend_path = "/app/frontend" if os.path.exists("/app/frontend") else "frontend"
-app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
+
+# Mount Frontend Assets
+frontend_path = "/app/frontend" if os.path.exists("/app/frontend") else os.path.join(os.path.dirname(__file__), "..", "frontend")
+if os.path.exists(frontend_path):
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
 
 if __name__ == "__main__":
     import uvicorn
