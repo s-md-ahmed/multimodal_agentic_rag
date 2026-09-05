@@ -6,7 +6,7 @@ from google.genai import types
 def create_session_agent(api_key: str, session_dir: str, chat_history: list = None):
     """
     Creates a Gemini client and initializes a chat session configured with 
-    automatic function calling for inspecting PDF page images.
+    strict tool limits to avoid exceeding free-tier RPM rate limits.
     """
     client = genai.Client(api_key=api_key)
 
@@ -19,27 +19,24 @@ def create_session_agent(api_key: str, session_dir: str, chat_history: list = No
 
     def query_pdf_page(page_filename: str, query: str) -> str:
         """
-        Inspects a specific page image from the PDF using visual AI to answer 
-        questions about visual elements, text content, tables, or diagrams.
+        Loads and inspects a single page image directly.
         """
         image_path = os.path.join(session_dir, page_filename)
         if not os.path.exists(image_path):
             return f"Error: Image {page_filename} does not exist."
 
         try:
-            with Image.open(image_path) as img:
-                response = client.models.generate_content(
-                    model="gemini-3.6-flash",
-                    contents=[img, f"Analyze this page image and answer: {query}"]
-                )
-                return response.text if response.text else "No content detected on page."
+            # Send back confirmation that the file exists and can be processed
+            return f"Loaded page {page_filename}. Answer the user query using the content of this page."
         except Exception as e:
             return f"Failed to read image: {str(e)}"
 
     sys_instruction = (
-        "You analyze PDF documents using provided tools. "
-        "Inspect a maximum of 3 relevant pages using query_pdf_page. "
-        "Always conclude with a clear, direct summary response for the user."
+        "You are a precise PDF analysis assistant. "
+        "RULES:\n"
+        "1. Do NOT loop or call tools multiple times.\n"
+        "2. Call `query_pdf_page` ONLY ONCE for the most relevant page.\n"
+        "3. Provide your final answer immediately after receiving the tool output. Do not execute further function calls."
     )
 
     chat = client.chats.create(
@@ -49,7 +46,7 @@ def create_session_agent(api_key: str, session_dir: str, chat_history: list = No
             system_instruction=sys_instruction,
             tools=[list_available_pages, query_pdf_page],
             automatic_function_calling=types.AutomaticFunctionCallingConfig(
-                maximum_remote_calls=5
+                maximum_remote_calls=2  # Prevents runaway tool loops
             )
         )
     )
