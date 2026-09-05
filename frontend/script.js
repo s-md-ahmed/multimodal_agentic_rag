@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Send request to /upload-pdf first and store returned session_id
+    // Upload PDF handler
     uploadButton.addEventListener("click", async (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -131,7 +131,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Send session_id along with prompt to /chat-with-pdf
+    // Chat Message Handler
     async function sendUserMessage() {
         const text = userInput.value.trim();
         if (!text) return;
@@ -150,7 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
         appendMessage(text, "user-message");
         userInput.value = "";
 
-        // Create container ONCE with thinking status
+        // Append initial thinking state
         const botMessageDiv = appendMessage("Thinking...", "agent-message thinking-bubble");
 
         try {
@@ -165,19 +165,29 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.detail || "Server error " + response.status);
+                let errorMsg = "Server error " + response.status;
+                try {
+                    const errData = await response.json();
+                    errorMsg = errData.detail || errData.error || errorMsg;
+                } catch (_) {
+                    errorMsg = await response.text();
+                }
+                throw new Error(errorMsg);
             }
 
             const data = await response.json();
             
-            // Remove thinking state class and update content in-place
+            // Remove thinking indicator
             botMessageDiv.classList.remove("thinking-bubble");
 
-            if (data && data.response) {
-                botMessageDiv.innerHTML = formatMarkdown(data.response);
+            // Check for common backend key names dynamically
+            const answerText = data.response || data.answer || data.text || data.message || (typeof data === "string" ? data : null);
+
+            if (answerText) {
+                botMessageDiv.innerHTML = formatMarkdown(answerText);
             } else {
-                botMessageDiv.innerHTML = "<em>No response returned from model.</em>";
+                console.warn("Unexpected backend payload structure:", data);
+                botMessageDiv.innerHTML = "<em>No response text found in model output.</em>";
             }
         } catch (err) {
             console.error("Chat error:", err);
@@ -186,7 +196,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Convert Markdown tags to HTML tags
+    // Markdown Formatter
     function formatMarkdown(rawText) {
         if (!rawText) return "";
         return rawText
@@ -201,10 +211,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function appendMessage(text, className) {
         const messageDiv = document.createElement("div");
-        messageDiv.classList.add("message", className.split(" ")[0]);
-        if (className.includes("thinking-bubble")) {
-            messageDiv.classList.add("thinking-bubble");
-        }
+        messageDiv.className = `message ${className}`;
 
         if (className.includes("thinking-bubble") || className.includes("user-message")) {
             messageDiv.textContent = text;
