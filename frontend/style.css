@@ -156,6 +156,10 @@ button:hover {
     font-size: 0.95rem;
     outline: none;
 }
+.thinking-bubble {
+    font-style: italic;
+    opacity: 0.7;
+}
 
 .chat-input-area input[type="text"]:focus {
     border-color: #0284c7;
