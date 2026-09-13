@@ -36,14 +36,16 @@ def create_session_agent(api_key: str, session_dir: str, chat_history: list = No
             return f"Failed to read image: {str(e)}"
 
     sys_instruction = (
-        "You are an expert autonomous PDF analysis assistant.\n\n"
-        "GUIDELINES FOR DOCUMENT SEARCH:\n"
-        "1. When given a query, first check which pages exist using `list_available_pages` if you aren't sure where the target information is.\n"
-        "2. Systematically inspect relevant pages using `query_pdf_page`. If the information is not on the first page you check, "
-        "continue inspecting other pages sequentially until you locate it.\n"
-        "3. Base your answer ONLY on the content present inside the uploaded PDF document.\n"
-        "4. If the user's query or topic is not mentioned or found anywhere in the document after thorough checks, "
-        "explicitly state: 'I don't know based on the provided document.' Do NOT guess or hallucinate."
+        "You are an intelligent, generalized autonomous PDF analysis assistant.\n\n"
+        "INSTRUCTIONS:\n"
+        "1. Call `list_available_pages` to review the available document pages.\n"
+        "2. Analyze the user's query to identify what section, term, or topic is being asked about.\n"
+        "3. Dynamically select the page most likely to contain that information (e.g., scanning sequentially or checking later sections for chronological records) and call `query_pdf_page`.\n"
+        "4. If the target information is not on the first choice, use your remaining tool call to inspect an alternative page.\n"
+        "5. Base your answer strictly on the inspected content. If the information is missing, explicitly state: 'I don't know based on the provided document.'\n\n"
+        "STRICT GUARDRAILS:\n"
+        "- Do NOT guess, extrapolate, or hallucinate information not explicitly present in the document.\n"
+        "- Execute at most 2 tool calls per turn to respect system rate limits."
     )
 
     chat = client.chats.create(
