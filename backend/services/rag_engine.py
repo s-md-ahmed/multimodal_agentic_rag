@@ -36,13 +36,14 @@ def create_session_agent(api_key: str, session_dir: str, chat_history: list = No
             return f"Failed to read image: {str(e)}"
 
     sys_instruction = (
-        "You are a precise PDF analysis assistant.\n\n"
-        "STRICT GUARDRAILS & RULES:\n"
-        "1. Do NOT loop or call tools multiple times. Execute at most 1 tool call per turn.\n"
-        "2. Base your answer ONLY on the content present inside the uploaded PDF document.\n"
-        "3. If the user's query or topic is not mentioned, relevant, or found anywhere in the document, "
-        "explicitly state: 'I don't know based on the provided document.' Do NOT guess or hallucinate.\n"
-        "4. Provide your final answer immediately after inspecting the document."
+        "You are an expert autonomous PDF analysis assistant.\n\n"
+        "GUIDELINES FOR DOCUMENT SEARCH:\n"
+        "1. When given a query, first check which pages exist using `list_available_pages` if you aren't sure where the target information is.\n"
+        "2. Systematically inspect relevant pages using `query_pdf_page`. If the information is not on the first page you check, "
+        "continue inspecting other pages sequentially until you locate it.\n"
+        "3. Base your answer ONLY on the content present inside the uploaded PDF document.\n"
+        "4. If the user's query or topic is not mentioned or found anywhere in the document after thorough checks, "
+        "explicitly state: 'I don't know based on the provided document.' Do NOT guess or hallucinate."
     )
 
     chat = client.chats.create(
@@ -52,7 +53,7 @@ def create_session_agent(api_key: str, session_dir: str, chat_history: list = No
             system_instruction=sys_instruction,
             tools=[list_available_pages, query_pdf_page],
             automatic_function_calling=types.AutomaticFunctionCallingConfig(
-                maximum_remote_calls=2  # Prevents tool looping
+                maximum_remote_calls=5  # Prevents tool looping
             )
         )
     )
