@@ -10,12 +10,16 @@ def create_session_agent(api_key: str, session_dir: str, chat_history: list = No
     """
     client = genai.Client(api_key=api_key)
 
-    def list_available_pages() -> list[str]:
-        """Lists all rendered page image files available for this document."""
-        if not os.path.exists(session_dir):
-            return []
+    def list_available_pages() -> str:
+        """Returns a structural manifest of all pages, showing which pages contain images or text snippets."""
+        manifest_path = os.path.join(session_dir, "manifest.json")
+        if os.path.exists(manifest_path):
+            with open(manifest_path, "r") as f:
+                return f.read()
+        
+        # Fallback if manifest doesn't exist
         files = sorted(os.listdir(session_dir))
-        return [f for f in files if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+        return str([f for f in files if f.lower().endswith(('.png', '.jpg', '.jpeg'))])
 
     def query_pdf_page(page_filename: str, query: str) -> str:
         """
@@ -38,16 +42,16 @@ def create_session_agent(api_key: str, session_dir: str, chat_history: list = No
     sys_instruction = (
         "You are an intelligent, generalized autonomous PDF analysis assistant.\n\n"
         "INSTRUCTIONS:\n"
-        "1. Call `list_available_pages` to review the available document pages.\n"
+        "1. Call `list_available_pages` first to review the document manifest (which shows page numbers, text previews, and `has_images` flags).\n"
         "2. Analyze the user's query:\n"
-        "   - For specific targeted facts (e.g., a specific semester's grades), select the single most likely page and inspect it.\n"
-        "   - For global requests spanning the whole document (e.g., finding all images or summarizing all sections), distribute your tool calls across different pages (e.g., inspect page 1 and page 2/3).\n"
-        "3. Base your answer strictly on the inspected content. If the information is missing, explicitly state: 'I don't know based on the provided document.'\n\n"
+        "   - For targeted facts, pick the specific page indicated by the manifest.\n"
+        "   - For global requests like finding images, look at the manifest flags (`has_images: true`) to immediately target the right pages on your next call.\n"
+        "3. Use `query_pdf_page` to inspect the relevant page(s).\n"
+        "4. Base your answer strictly on the inspected content.\n\n"
         "STRICT GUARDRAILS:\n"
-        "- Do NOT guess, extrapolate, or hallucinate information not explicitly present in the document.\n"
-        "- Execute at most 2 tool calls per turn to respect system rate limits."
+        "- Do NOT guess or hallucinate.\n"
+        "- Execute at most 2 tool calls per turn."
     )
-
     chat = client.chats.create(
         model="gemini-3.6-flash",
         history=chat_history or [],
