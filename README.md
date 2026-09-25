@@ -42,7 +42,7 @@ flowchart TD
 * **Multimodal Visual RAG:** Rasterizes PDF pages into images so the model can visually interpret layout, formatting, and tables.
 * **Dynamic Tool-Use Agent:** Utilizes custom Python function bindings (`list_available_pages` and `query_pdf_page`) to give the LLM workspace navigation capabilities[cite: 1].
 * **Bring Your Own Key (BYOK) Security:** Client-side API keys are passed securely via custom headers and injected into runtime closures, preventing hardcoded secrets on the server.
-* **Resilient Error Handling:** Gracefully manages rate limits and server states with clean UI feedback.
+
 * **Cloud Deployment Ready:** Fully containerized via Docker and deployed on Render.
 
 ---
@@ -52,7 +52,7 @@ flowchart TD
 * **AI / ML:** Google GenAI SDK (`google-genai`), Pillow (PIL)[cite: 1]
 * **Frontend:** Vanilla HTML5, CSS3, Modern JavaScript (Fetch API)[cite: 1]
 * **Infrastructure:** Docker (`python:3.12-slim`), Render[cite: 1]
-
+* **Resilient Error Handling:** Intercepts missing session IDs (`404`) and file parsing exceptions, safely purging temporary `/tmp/` directories before returning sanitized error details to prevent internal path leakage.
 ---
 
 ## Project Structure
