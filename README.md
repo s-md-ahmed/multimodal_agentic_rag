@@ -14,7 +14,6 @@ Real-world enterprise documents (financial reports, research papers, architectur
 
 ## System Architecture & Workflow
 Traditional text-based RAG pipelines often break when encountering complex layouts, multi-column text, data tables, or charts. This application solves that by converting PDFs into high-resolution images and letting an intelligent agent visually inspect them.
-flowchart TD
 
 <img width="4093" height="7817" alt="diagram (1)" src="https://github.com/user-attachments/assets/a2d1c744-6e6c-417d-b829-48243971ba4d" />
 
